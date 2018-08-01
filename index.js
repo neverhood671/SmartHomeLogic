@@ -9,44 +9,39 @@ var PriceFunction = require("./PriceFunction"),
     Schedule = require("./Schedule"),
     fs = require("fs");
 
-module.exports = function(inputFileName) {
+module.exports = function(input) {
 
-    fs.readFile(inputFileName, function(err, data) {
-        if (err) throw `File ${inputFileName} not found!`;
-        var input = JSON.parse(data),
-            devices = input.devices.sort((a, b) => {
-                if (a.duration !== b.duration) {
-                    return b.duration - a.duration;
-                }
-                return a.power > b.power ? -1 : 1;
-            }),
-            rates = input.rates,
-            maxPower = input.maxPower,
-            schedule = new Schedule(),
-            priceFunction = new PriceFunction(rates),
-            finalDevicesConsumedEnergy = [];
+    var devices = input.devices.sort((a, b) => {
+            if (a.duration !== b.duration) {
+                return b.duration - a.duration;
+            }
+            return a.power > b.power ? -1 : 1;
+        }),
+        rates = input.rates,
+        maxPower = input.maxPower,
+        schedule = new Schedule(),
+        priceFunction = new PriceFunction(rates),
+        finalDevicesConsumedEnergy = {};
 
-        devices.forEach(d => {
-            if (d.power > maxPower) throw `Device ${d.id} needs more power than max power`;
+    devices.forEach(d => {
+        if (d.power > maxPower) throw `Device ${d.id} needs more power than max power`;
 
-            let prices = calcPricesForAllTimeRanges(d, priceFunction),
-                bestChoice = getDeviceStartTimeAndFinalPrice(d, prices, schedule, maxPower),
-                deviceStartTime = bestChoice.startTime,
-                deviceBestPrice = bestChoice.price;
+        let prices = calcPricesForAllTimeRanges(d, priceFunction),
+            bestChoice = getDeviceStartTimeAndFinalPrice(d, prices, schedule, maxPower),
+            deviceStartTime = bestChoice.startTime,
+            deviceBestPrice = bestChoice.price;
 
-            if (deviceStartTime > -1) {
-                for (let t = deviceStartTime; t < deviceStartTime + d.duration; t++) {
-                    schedule.scheduleRows[t].addDevice(d);
-                }
+        if (deviceStartTime > -1) {
+            for (let t = deviceStartTime; t < deviceStartTime + d.duration; t++) {
+                schedule.scheduleRows[t].addDevice(d);
+            }
 
-                finalDevicesConsumedEnergy[d.id] = deviceBestPrice / 1000;
-            
-            } else throw (`There is no avalible time for device ${d.id}`);
+            finalDevicesConsumedEnergy[d.id] = deviceBestPrice / 1000 * d.power;
+        } else throw (`There is no avalible time for device ${d.id}`);
 
-        });
-        fs.writeFile('output.json', schedule.toJSON());
     });
-    return "success";
+    let summaryPover = Object.values(finalDevicesConsumedEnergy).reduce((x, y) => x + y);
+    return `{${schedule.toJSON()}, "consumedEnergy": {"value":"${summaryPover}", "devices": ${JSON.stringify(finalDevicesConsumedEnergy)}}}`;
 };
 
 
@@ -58,7 +53,7 @@ function getDeviceStartTimeAndFinalPrice(device, prices, schedule, maxPower) {
         isTimeForDeviceFound =
             schedule.isDeviceCanBeAdded(device, maxPower, prices[i].startTime, prices[i].startTime + device.duration);
     }
-    return isTimeForDeviceFound ? prices[i]: -1;
+    return isTimeForDeviceFound ? prices[i] : -1;
 }
 
 function calcPricesForAllTimeRanges(device, priceFunction) {
