@@ -20,7 +20,7 @@ class ScheduleRow {
     }
 
     get devicesIdList(){
-        return this.devices.map(d => `"${d.id}"`);
+        return this.devices.map(d => d.id);
     }
 }
 

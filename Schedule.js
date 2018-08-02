@@ -20,13 +20,13 @@ class Schedule {
         return res;
     }
 
-    toJSON() {
-        let json = '';
+    getMainInfo() {
+        let info = {};
         this.scheduleRows.forEach( row => {
-        	json += `"${row.hour}": [${row.devicesIdList}],`;
+        	info[row.hour] = row.devicesIdList;
         });
 
-        return `"schedule": {${json}}`;
+        return info;
     }
 }
 

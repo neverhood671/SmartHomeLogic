@@ -40,8 +40,12 @@ module.exports = function(input) {
         } else throw (`There is no avalible time for device ${d.id}`);
 
     });
-    let summaryPover = Object.values(finalDevicesConsumedEnergy).reduce((x, y) => x + y);
-    return `{${schedule.toJSON()}, "consumedEnergy": {"value":"${summaryPover}", "devices": ${JSON.stringify(finalDevicesConsumedEnergy)}}}`;
+    let summaryPover = Object.values(finalDevicesConsumedEnergy).reduce((x, y) => x + y),
+        consumedEnergy = {
+            value: summaryPover,
+            devices: finalDevicesConsumedEnergy
+        }
+    return {schedule: schedule.getMainInfo(), consumedEnergy};
 };
 
 
