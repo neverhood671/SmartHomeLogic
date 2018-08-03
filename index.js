@@ -6,11 +6,11 @@ const DAY_MODE = "day",
 
 var PriceFunction = require("./PriceFunction"),
     ScheduleRow = require("./ScheduleRow"),
-    Schedule = require("./Schedule"),
-    fs = require("fs");
+    Schedule = require("./Schedule");
 
 module.exports = function(input) {
 
+    validateInput(input);
     var devices = input.devices.sort((a, b) => {
             if (a.duration !== b.duration) {
                 return b.duration - a.duration;
@@ -24,7 +24,6 @@ module.exports = function(input) {
         finalDevicesConsumedEnergy = {};
 
     devices.forEach(d => {
-        if (d.power > maxPower) throw `Device ${d.id} needs more power than max power`;
 
         let prices = calcPricesForAllTimeRanges(d, priceFunction),
             bestChoice = getDeviceStartTimeAndFinalPrice(d, prices, schedule, maxPower),
@@ -45,7 +44,7 @@ module.exports = function(input) {
             value: summaryPover,
             devices: finalDevicesConsumedEnergy
         }
-    return {schedule: schedule.getMainInfo(), consumedEnergy};
+    return { schedule: schedule.getMainInfo(), consumedEnergy };
 };
 
 
@@ -59,6 +58,7 @@ function getDeviceStartTimeAndFinalPrice(device, prices, schedule, maxPower) {
     }
     return isTimeForDeviceFound ? prices[i] : -1;
 }
+
 
 function calcPricesForAllTimeRanges(device, priceFunction) {
     var tStartMin, tStartMax, prices = [];
@@ -89,3 +89,24 @@ function calcPricesForAllTimeRanges(device, priceFunction) {
 
     return prices.sort((a, b) => a.price > b.price ? 1 : -1);
 }
+
+
+function validateInput(input) {
+    if (!isNumber(input.maxPower)) throw new TypeError('Invalid input data: max power should be a number.');
+
+    input.devices.forEach(d => {
+        if (!isNumber(d.power) || !isNumber(d.duration)) throw new TypeError(`Invalid input data: Device ${d.id} data is incorrect! The power and duration should be a number.`);
+        if (d.power > input.maxPower) throw new Error(`Invalid input data: Device ${d.id} needs more than max power!`);
+        if ((d.duration > 24) || (d.duration < 0)) throw new RangeError(`Invalid input data: Duration of work for device ${d.id} is incorrect! It should be between 0 and 24 hours.`);
+        if (((d.mode == DAY_MODE) && (d.duration > 14)) || ((d.mode == NIGHT_MODE) && (d.duration > 10)))
+            throw new Error(`Invalid input data: Duration of work for device ${d.id} is longer than its mode max duration.`);
+    });
+
+    input.rates.forEach(r => {
+        if (!isNumber(r.from) || !isNumber(r.to)) throw new TypeError("Invalid input data: rate.from and rate.to should be a number");
+        if ((r.from < 1) || (r.to > 24)) throw new RangeError("Invalid input data: rates' from and to props shold be between 1 and 24");
+    })
+}
+
+
+function isNumber(n) { return !isNaN(parseFloat(n)) && !isNaN(n - 0) }
